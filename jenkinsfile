@@ -14,7 +14,7 @@ pipeline {
 
     stage('Checkout') {
       steps {
-        git credentialsId: 'git-creds',
+        git credentialsId: 'git-cred',
             url: 'https://github.com/<your-username>/nginx-app.git'
       }
     }
@@ -52,7 +52,7 @@ pipeline {
     stage('Docker Push') {
       steps {
         withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-creds',
+          credentialsId: 'docker-cred',
           usernameVariable: 'DOCKER_USER',
           passwordVariable: 'DOCKER_PASS'
         )]) {
@@ -82,4 +82,3 @@ pipeline {
     }
   }
 }
-
