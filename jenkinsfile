@@ -15,8 +15,7 @@ pipeline {
     stage('Checkout') {
       steps {
         git credentialsId: 'git-cred',
-            url: 'https://github.com/shubham-mali/Application-Repo'
-            branch: 'main'
+            url: 'https://github.com/shubham-mali/Application-Repo
       }
     }
 
