@@ -1,0 +1,10 @@
+replicaCount: 1
+
+image:
+  repository: dockerhubusername/nginx-app
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 80
+
