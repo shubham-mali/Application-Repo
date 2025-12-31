@@ -1,9 +1,83 @@
 pipeline {
   agent any
+
+  parameters {
+    choice(name: 'ENV', choices: ['dev'], description: 'Environment')
+  }
+
+  environment {
+    IMAGE_NAME = "nginx-app"
+    IMAGE_TAG  = "${BUILD_NUMBER}"
+  }
+
   stages {
-    stage('Test') {
+
+    stage('Checkout') {
       steps {
-        echo 'Pipeline loaded successfully'
+        git credentialsId: 'git-creds',
+            url: 'https://github.com/<your-username>/nginx-app.git'
+      }
+    }
+
+    stage('Maven Build') {
+      steps {
+        sh 'mvn clean package'
+      }
+    }
+
+    stage('SonarQube Scan') {
+      steps {
+        withSonarQubeEnv('sonar') {
+          sh '''
+          mvn sonar:sonar \
+            -Dsonar.projectKey=nginx-app \
+            -Dsonar.projectName=nginx-app
+          '''
+        }
+      }
+    }
+
+    stage('Docker Build') {
+      steps {
+        sh 'docker build -t nginx-app:${IMAGE_TAG} .'
+      }
+    }
+
+    stage('Trivy Scan') {
+      steps {
+        sh 'trivy image nginx-app:${IMAGE_TAG}'
+      }
+    }
+
+    stage('Docker Push') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+          docker login -u $DOCKER_USER -p $DOCKER_PASS
+          docker tag nginx-app:${IMAGE_TAG} $DOCKER_USER/nginx-app:${IMAGE_TAG}
+          docker push $DOCKER_USER/nginx-app:${IMAGE_TAG}
+          '''
+        }
+      }
+    }
+
+    stage('Deploy with Helm') {
+      steps {
+        withCredentials([file(
+          credentialsId: 'kubeconfig',
+          variable: 'KUBECONFIG'
+        )]) {
+          sh '''
+          helm upgrade --install nginx helm/nginx \
+            -n dev \
+            -f helm/nginx/values-dev.yaml \
+            --set image.tag=${IMAGE_TAG}
+          '''
+        }
       }
     }
   }
